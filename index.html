@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CrypTalk — Encrypted Messenger</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .key-gen-status {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent3);
+      text-align: center;
+      margin-top: 10px;
+      min-height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .key-gen-status.error { color: var(--danger); }
+
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: blink 1s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+    .strength-bar {
+      height: 3px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 2px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .strength-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.3s, background 0.3s;
+      width: 0%;
+    }
+
+    .feature-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+    .pill {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+    .pill.green  { border-color: rgba(6,255,165,0.3);   color: var(--accent3); }
+    .pill.blue   { border-color: rgba(74,158,255,0.3);  color: var(--accent); }
+    .pill.purple { border-color: rgba(139,92,246,0.3);  color: var(--accent2); }
+
+    .progress-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin: 12px 0 4px;
+    }
+    .step-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      transition: color 0.3s;
+    }
+    .step-row.done  { color: var(--accent3); }
+    .step-row.doing { color: var(--accent); }
+    .step-icon { width: 14px; text-align: center; }
+  </style>
+</head>
+<body>
+  <canvas id="lava-canvas"></canvas>
+
+  <div class="auth-page">
+    <div class="auth-card glass">
+      <div class="auth-logo">
+        <div class="logo-symbol">🔐</div>
+        <h1>CrypTalk</h1>
+        <p>Zero-knowledge encrypted messaging</p>
+      </div>
+
+      <div class="feature-pills">
+        <span class="pill green">AES-256-GCM</span>
+        <span class="pill blue">ECDH P-256</span>
+        <span class="pill purple">E2E Encrypted</span>
+      </div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchTab('login')">Sign In</button>
+        <button class="auth-tab" onclick="switchTab('register')">Create Account</button>
+      </div>
+
+      <!-- ── LOGIN ── -->
+      <div id="panel-login" class="form-panel active">
+        <div class="input-group">
+          <label>Username</label>
+          <input id="login-username" type="text" placeholder="your_username" autocomplete="username" />
+        </div>
+        <div class="input-group">
+          <label>Password</label>
+          <input id="login-password" type="password" placeholder="••••••••••••" autocomplete="current-password" />
+        </div>
+        <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">
+          Sign In
+        </button>
+        <div class="progress-steps" id="login-steps" style="display:none">
+          <div class="step-row" id="ls-auth"><span class="step-icon">⏳</span> Authenticating...</div>
+          <div class="step-row" id="ls-key"><span class="step-icon">⏳</span> Restoring encryption key...</div>
+          <div class="step-row" id="ls-done"><span class="step-icon">⏳</span> Loading messages...</div>
+        </div>
+        <div class="key-gen-status" id="login-status"></div>
+      </div>
+
+      <!-- ── REGISTER ── -->
+      <div id="panel-register" class="form-panel">
+        <div class="input-group">
+          <label>Username</label>
+          <input id="reg-username" type="text" placeholder="choose_a_username" autocomplete="username" />
+        </div>
+        <div class="input-group">
+          <label>Password</label>
+          <input id="reg-password" type="password" placeholder="strong passphrase"
+                 autocomplete="new-password" oninput="checkStrength(this.value)" />
+          <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+        </div>
+        <div class="input-group">
+          <label>Confirm Password</label>
+          <input id="reg-confirm" type="password" placeholder="repeat passphrase" autocomplete="new-password" />
+        </div>
+        <button class="btn btn-primary btn-full" id="register-btn" onclick="doRegister()">
+          Create Account
+        </button>
+        <div class="progress-steps" id="reg-steps" style="display:none">
+          <div class="step-row" id="rs-keygen"><span class="step-icon">⏳</span> Generating ECDH P-256 key pair...</div>
+          <div class="step-row" id="rs-wrap"><span class="step-icon">⏳</span> Encrypting key with your password...</div>
+          <div class="step-row" id="rs-upload"><span class="step-icon">⏳</span> Registering account...</div>
+          <div class="step-row" id="rs-done"><span class="step-icon">⏳</span> Saving key to browser...</div>
+        </div>
+        <div class="key-gen-status" id="reg-status"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/lava.js"></script>
+  <script src="js/crypto.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/toast.js"></script>
+  <script>
+    window.CRYPTALK_API = 'https://quench-preteen-catalyze.ngrok-free.dev'; // ← paste your ngrok URL here
+
+    LavaLamp.init();
+
+    if (API.getToken()) window.location.href = 'app.html';
+
+    // ── Tab switching ──────────────────────────────────────────────
+    function switchTab(tab) {
+      document.querySelectorAll('.auth-tab').forEach((t, i) => {
+        t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+      });
+      document.getElementById('panel-login').classList.toggle('active', tab === 'login');
+      document.getElementById('panel-register').classList.toggle('active', tab === 'register');
+    }
+
+    // ── Password strength ──────────────────────────────────────────
+    function checkStrength(pw) {
+      let score = 0;
+      if (pw.length >= 8)  score++;
+      if (pw.length >= 12) score++;
+      if (/[A-Z]/.test(pw)) score++;
+      if (/[0-9]/.test(pw)) score++;
+      if (/[^A-Za-z0-9]/.test(pw)) score++;
+      const fill   = document.getElementById('strength-fill');
+      const colors = ['#ff4a6b','#ff8c4a','#ffd94a','#4aff8c','#06ffa5'];
+      fill.style.width      = `${score * 20}%`;
+      fill.style.background = colors[score - 1] || 'transparent';
+    }
+
+    // ── Step helpers ───────────────────────────────────────────────
+    function stepDoing(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.add('doing');
+      el.querySelector('.step-icon').textContent = '⚡';
+    }
+    function stepDone(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.remove('doing');
+      el.classList.add('done');
+      el.querySelector('.step-icon').textContent = '✓';
+    }
+    function setStatus(id, msg, isError = false) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = msg;
+      el.className = 'key-gen-status' + (isError ? ' error' : '');
+    }
+
+    // ── LOGIN ──────────────────────────────────────────────────────
+    async function doLogin() {
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!username || !password) return Toast.error('Fill in all fields');
+
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true;
+      document.getElementById('login-steps').style.display = 'flex';
+      setStatus('login-status', '');
+
+      try {
+        // Step 1 — authenticate
+        stepDoing('ls-auth');
+        const data = await API.login(username, password);
+        stepDone('ls-auth');
+
+        // Step 2 — restore private key
+        stepDoing('ls-key');
+        let privateKeyB64 = CryptoEngine.loadPrivateKey();
+
+        if (!privateKeyB64 && data.encryptedPrivateKey) {
+          // Key not in this browser — unwrap from server using password
+          try {
+            const restoredKey = await CryptoEngine.unwrapPrivateKey(data.encryptedPrivateKey, password);
+            // Export and save to cookie + localStorage
+            const exported = await crypto.subtle.exportKey('pkcs8', restoredKey);
+            privateKeyB64 = CryptoEngine.arrayBufferToBase64(exported);
+            CryptoEngine.savePrivateKey(privateKeyB64);
+          } catch (e) {
+            setStatus('login-status', '⚠ Could not restore key — check password', true);
+          }
+        } else if (!privateKeyB64 && !data.encryptedPrivateKey) {
+          setStatus('login-status', '⚠ No key backup on server — old account');
+        }
+        stepDone('ls-key');
+
+        // Step 3 — done
+        stepDoing('ls-done');
+        stepDone('ls-done');
+
+        Toast.success(`Welcome back, ${data.username}!`);
+        setTimeout(() => window.location.href = 'app.html', 600);
+
+      } catch (e) {
+        Toast.error(e.message);
+        setStatus('login-status', e.message, true);
+        btn.disabled = false;
+        document.getElementById('login-steps').style.display = 'none';
+      }
+    }
+
+    // ── REGISTER ───────────────────────────────────────────────────
+    async function doRegister() {
+      const username = document.getElementById('reg-username').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const confirm  = document.getElementById('reg-confirm').value;
+
+      if (!username || !password) return Toast.error('Fill in all fields');
+      if (password !== confirm)   return Toast.error('Passwords do not match');
+      if (password.length < 8)    return Toast.error('Password must be at least 8 characters');
+
+      const btn = document.getElementById('register-btn');
+      btn.disabled = true;
+      document.getElementById('reg-steps').style.display = 'flex';
+      setStatus('reg-status', '');
+
+      try {
+        // Step 1 — generate key pair
+        stepDoing('rs-keygen');
+        const keys = await CryptoEngine.generateKeyPair();
+        stepDone('rs-keygen');
+
+        // Step 2 — wrap private key with password (PBKDF2 + AES-256-GCM)
+        stepDoing('rs-wrap');
+        const encryptedPrivateKey = await CryptoEngine.wrapPrivateKey(keys.privateKey, password);
+        stepDone('rs-wrap');
+
+        // Step 3 — register (send public key + password-wrapped private key)
+        stepDoing('rs-upload');
+        const data = await API.register(username, password, keys.publicKeyB64, encryptedPrivateKey);
+        stepDone('rs-upload');
+
+        // Step 4 — save raw private key to cookie + localStorage
+        stepDoing('rs-done');
+        CryptoEngine.savePrivateKey(keys.privateKeyB64);
+        stepDone('rs-done');
+
+        const fp = CryptoEngine.generateFingerprint(keys.publicKeyB64);
+        setStatus('reg-status', `✓ Key fingerprint: ${fp}`);
+        Toast.success('Account created! Keys generated & backed up.');
+        setTimeout(() => window.location.href = 'app.html', 900);
+
+      } catch (e) {
+        Toast.error(e.message);
+        setStatus('reg-status', e.message, true);
+        btn.disabled = false;
+        document.getElementById('reg-steps').style.display = 'none';
+      }
+    }
+
+    // Enter key support
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      if (document.getElementById('panel-login').classList.contains('active')) doLogin();
+      else doRegister();
+    });
+  </script>
+</body>
+</html>

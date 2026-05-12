@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CrypTalk</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* ── Sidebar extras ── */
+    .ws-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: background 0.3s;
+      flex-shrink: 0;
+    }
+    .ws-dot.online { background: var(--accent3); box-shadow: 0 0 8px var(--accent3); }
+
+    .add-friend-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 9px 12px;
+      background: rgba(74,158,255,0.08);
+      border: 1px dashed rgba(74,158,255,0.3);
+      border-radius: 10px;
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 4px;
+    }
+    .add-friend-btn:hover {
+      background: rgba(74,158,255,0.15);
+      border-style: solid;
+    }
+
+    .user-info-bar {
+      margin-top: auto;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .user-info-bar .avatar {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 13px;
+    }
+    .user-info-bar .username {
+      font-size: 13px; font-weight: 600; flex: 1;
+    }
+    .logout-btn {
+      padding: 5px 10px;
+      font-size: 11px;
+    }
+
+    /* ── Chat header extras ── */
+    .chat-header-actions { margin-left: auto; display: flex; gap: 8px; }
+    .icon-btn {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      transition: all 0.2s;
+    }
+    .icon-btn:hover { background: var(--surface-hover); color: var(--text); }
+
+    /* ── Typing indicator ── */
+    .typing-dots {
+      display: flex; gap: 4px; align-items: center; padding: 8px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      border-bottom-left-radius: 4px;
+      width: fit-content;
+    }
+    .typing-dots span {
+      width: 6px; height: 6px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      animation: bounce 1.2s ease-in-out infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%,80%,100% { transform: translateY(0); }
+      40% { transform: translateY(-6px); }
+    }
+
+    /* ── Message status icons ── */
+    .msg-status { font-size: 10px; margin-left: 4px; opacity: 0.7; }
+
+    /* ── Key info panel ── */
+    .key-panel {
+      padding: 12px 16px;
+      margin: 0 24px 12px;
+      border-radius: 10px;
+      background: rgba(6,255,165,0.05);
+      border: 1px solid rgba(6,255,165,0.15);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Loading overlay ── */
+    #loading-overlay {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      z-index: 999;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px;
+      transition: opacity 0.5s;
+    }
+    #loading-overlay.fade-out { opacity: 0; pointer-events: none; }
+    .loading-logo {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .loading-msg {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ── Friend code modal ── */
+    .friend-code-display {
+      background: rgba(6,255,165,0.06);
+      border: 1px solid rgba(6,255,165,0.2);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--accent3);
+      word-break: break-all;
+      line-height: 1.6;
+      letter-spacing: 0.04em;
+      text-align: center;
+      margin: 12px 0;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .friend-code-display:hover {
+      background: rgba(6,255,165,0.1);
+    }
+
+    /* ── Decryption flash ── */
+    .decrypt-flash {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(74,158,255,0.1), transparent);
+      border-radius: inherit;
+      pointer-events: none;
+      animation: flash-out 0.6s ease forwards;
+    }
+    @keyframes flash-out {
+      from { opacity: 1; }
+      to   { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading-overlay">
+  <canvas id="lava-canvas-load" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
+  <div style="position:relative;text-align:center">
+    <div class="loading-logo">🔐 CrypTalk</div>
+    <div class="loading-msg" id="load-msg">Initializing encryption engine...</div>
+    <div style="margin-top:12px;display:flex;justify-content:center"><div class="loading-spinner"></div></div>
+  </div>
+</div>
+
+<canvas id="lava-canvas"></canvas>
+
+<div class="app-shell app-layout" id="app-shell" style="display:none">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-logo">CrypTalk</span>
+      <div class="ws-dot" id="ws-dot" title="Connection status"></div>
+    </div>
+
+    <div class="my-code-badge">
+      <label>My Friend Code</label>
+      <div class="code" id="my-friend-code">—</div>
+      <button class="btn btn-ghost copy-code-btn" onclick="copyMyCode()">Copy Code</button>
+    </div>
+
+    <div class="section-label">Conversations</div>
+
+    <div id="friends-list">
+      <!-- Injected by JS -->
+    </div>
+
+    <button class="add-friend-btn" onclick="openAddFriend()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      Add Friend
+    </button>
+
+    <div class="user-info-bar">
+      <div class="avatar" id="sidebar-avatar">?</div>
+      <div class="username" id="sidebar-username">—</div>
+      <button class="btn btn-ghost logout-btn" onclick="API.logout()">Sign Out</button>
+    </div>
+  </aside>
+
+  <!-- ── CHAT AREA ── -->
+  <main class="chat-area" id="chat-area">
+    <div class="empty-state" id="empty-state">
+      <div class="icon">🔐</div>
+      <h2>Your messages are encrypted</h2>
+      <p>Select a conversation or add a friend using their unique code.<br/>All messages use end-to-end encryption — only you and your friend can read them.</p>
+      <button class="btn btn-primary" onclick="openAddFriend()" style="margin-top:8px">Add a Friend</button>
+    </div>
+
+    <!-- Chat View (hidden until friend selected) -->
+    <div id="chat-view" class="hidden" style="display:flex;flex-direction:column;height:100%">
+      <div class="chat-header glass" style="border-radius:0;border-left:none;border-right:none;border-top:none">
+        <div class="friend-avatar" id="chat-avatar">?</div>
+        <div class="info">
+          <h2 id="chat-name">—</h2>
+          <div class="enc-badge">End-to-end encrypted</div>
+        </div>
+        <div class="chat-header-actions">
+          <button class="icon-btn" onclick="showKeyInfo()" title="View encryption info">🔑</button>
+        </div>
+      </div>
+
+      <div class="messages-container" id="messages-container">
+        <!-- Messages injected here -->
+      </div>
+
+      <div class="message-input-area">
+        <div class="message-input-row">
+          <textarea
+            id="message-input"
+            placeholder="Type an encrypted message…"
+            rows="1"
+            onkeydown="handleInputKey(event)"
+            oninput="autoGrow(this)"
+          ></textarea>
+          <button class="send-btn" onclick="sendMessage()" id="send-btn">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<!-- Add Friend Modal -->
+<div class="modal-overlay" id="add-friend-modal">
+  <div class="modal glass">
+    <h2>Add Friend</h2>
+    <p>Enter their CrypTalk friend code to connect</p>
+    <div class="input-group">
+      <label>Friend Code</label>
+      <input id="friend-code-input" type="text" placeholder="CT-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"
+             style="font-family:var(--font-mono);font-size:12px" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="doAddFriend()">Add Friend</button>
+      <button class="btn btn-ghost" onclick="closeAddFriend()">Cancel</button>
+    </div>
+
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+      <p style="margin-bottom:8px;font-size:11px;color:var(--text-muted)">Share your code with friends</p>
+      <div class="friend-code-display" id="share-my-code" onclick="copyMyCode()">—</div>
+      <div style="text-align:center;font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">Click to copy</div>
+    </div>
+  </div>
+</div>
+
+<!-- Key Info Modal -->
+<div class="modal-overlay" id="key-info-modal">
+  <div class="modal glass">
+    <h2>🔑 Encryption Details</h2>
+    <p>This conversation's cryptographic fingerprint</p>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
+      <div>
+        <div class="section-label" style="margin-bottom:6px">Protocol</div>
+        <div class="key-fingerprint">ECDH P-256 key exchange + AES-256-GCM message encryption</div>
+      </div>
+      <div>
+        <div class="section-label" style="margin-bottom:6px">Your Key Fingerprint</div>
+        <div class="key-fingerprint" id="my-key-fp">—</div>
+      </div>
+      <div>
+        <div class="section-label" style="margin-bottom:6px">Their Key Fingerprint</div>
+        <div class="key-fingerprint" id="their-key-fp">—</div>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);line-height:1.6">
+        Messages are encrypted on your device before sending. The server only stores ciphertext and never has access to your private key.
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:20px">
+      <button class="btn btn-ghost" onclick="closeKeyInfo()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script src="js/lava.js"></script>
+<script src="js/crypto.js"></script>
+<script src="js/api.js"></script>
+<script src="js/websocket.js"></script>
+<script src="js/toast.js"></script>
+<script>
+window.CRYPTALK_API = 'https://quench-preteen-catalyze.ngrok-free.dev'; // ← paste your ngrok URL here
+
+// ── State ──────────────────────────────────────────────────────────────────
+let myProfile = null;
+let myPrivateKey = null;
+let friends = [];
+let activeFriendId = null;
+let activeFriendPubKey = null;
+let messageCache = {};
+let pollingInterval = null;
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+async function boot() {
+  // Init lava on loading screen
+  const loadCanvas = document.getElementById('lava-canvas-load');
+  loadCanvas.id = 'lava-canvas';
+  LavaLamp.init();
+
+  if (!API.getToken()) {
+    window.location.href = 'index.html';
+    return;
+  }
+
+  setLoadMsg('Loading profile...');
+
+  try {
+    myProfile = await API.getMe();
+    setLoadMsg('Restoring encryption keys...');
+
+    let privB64 = CryptoEngine.loadPrivateKey();
+
+    if (!privB64 && myProfile.encryptedPrivateKey) {
+      // Not in this browser — prompt for password to unwrap the server backup
+      setLoadMsg('Enter your password to restore keys...');
+      const password = await promptPasswordModal();
+      if (password) {
+        try {
+          const restoredKey = await CryptoEngine.unwrapPrivateKey(myProfile.encryptedPrivateKey, password);
+          const exported = await crypto.subtle.exportKey('pkcs8', restoredKey);
+          privB64 = CryptoEngine.arrayBufferToBase64(exported);
+          CryptoEngine.savePrivateKey(privB64);
+        } catch (e) {
+          Toast.error('Wrong password — messages may not decrypt');
+        }
+      }
+    }
+
+    if (privB64) {
+      myPrivateKey = await CryptoEngine.importPrivateKey(privB64);
+      setLoadMsg('Keys ready ✓');
+    } else {
+      setLoadMsg('Proceeding without key...');
+    }
+
+    setLoadMsg('Loading friends...');
+    friends = await API.getFriends();
+
+    // Swap canvas to main
+    LavaLamp.stop();
+    const lc = document.getElementById('lava-canvas');
+    lc.id = 'lava-canvas-old';
+    document.body.insertAdjacentHTML('afterbegin', '<canvas id="lava-canvas" style="position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none"></canvas>');
+    LavaLamp.init();
+
+    renderSidebar();
+    connectWS();
+
+    document.getElementById('loading-overlay').classList.add('fade-out');
+    setTimeout(() => {
+      document.getElementById('loading-overlay').remove();
+      document.getElementById('app-shell').style.display = '';
+    }, 500);
+
+    // Poll for new messages every 5s (fallback if WS drops)
+    pollingInterval = setInterval(pollActiveConvo, 5000);
+
+  } catch (e) {
+    setLoadMsg(`Error: ${e.message}`);
+    setTimeout(() => API.logout(), 2000);
+  }
+}
+
+function setLoadMsg(msg) {
+  document.getElementById('load-msg').textContent = msg;
+}
+
+// ── Sidebar ────────────────────────────────────────────────────────────────
+function renderSidebar() {
+  document.getElementById('my-friend-code').textContent = myProfile.friendCode;
+  document.getElementById('share-my-code').textContent = myProfile.friendCode;
+  document.getElementById('sidebar-username').textContent = myProfile.username;
+  document.getElementById('sidebar-avatar').textContent = myProfile.username[0].toUpperCase();
+
+  const list = document.getElementById('friends-list');
+  list.innerHTML = '';
+
+  if (friends.length === 0) {
+    list.innerHTML = `<div style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);padding:8px 4px">No friends yet</div>`;
+    return;
+  }
+
+  friends.forEach(f => {
+    const el = document.createElement('div');
+    el.className = 'friend-item' + (f.id === activeFriendId ? ' active' : '');
+    el.dataset.id = f.id;
+    el.innerHTML = `
+      <div class="friend-avatar">${f.username[0].toUpperCase()}</div>
+      <div class="friend-info">
+        <div class="name">${escapeHtml(f.username)}</div>
+        <div class="status mono">encrypted</div>
+      </div>
+    `;
+    el.onclick = () => openChat(f);
+    list.appendChild(el);
+  });
+}
+
+// ── WebSocket ──────────────────────────────────────────────────────────────
+function connectWS() {
+  WSClient.connect();
+  WSClient.on('connected', () => {
+    document.getElementById('ws-dot').classList.add('online');
+  });
+  WSClient.on('disconnected', () => {
+    document.getElementById('ws-dot').classList.remove('online');
+  });
+  WSClient.on('message', async (msg) => {
+    if (msg.senderId === activeFriendId) {
+      await loadAndRenderMessages(activeFriendId);
+    }
+    Toast.info(`New encrypted message`);
+  });
+}
+
+// ── Chat ───────────────────────────────────────────────────────────────────
+async function openChat(friend) {
+  activeFriendId = friend.id;
+  activeFriendPubKey = null;
+
+  document.querySelectorAll('.friend-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === friend.id);
+  });
+
+  document.getElementById('empty-state').classList.add('hidden');
+  const chatView = document.getElementById('chat-view');
+  chatView.classList.remove('hidden');
+  chatView.style.display = 'flex';
+
+  document.getElementById('chat-name').textContent = friend.username;
+  document.getElementById('chat-avatar').textContent = friend.username[0].toUpperCase();
+
+  // Import their public key
+  try {
+    activeFriendPubKey = await CryptoEngine.importPublicKey(friend.publicKey);
+  } catch (e) {
+    Toast.error('Could not import friend public key');
+  }
+
+  await loadAndRenderMessages(friend.id);
+  document.getElementById('message-input').focus();
+}
+
+async function loadAndRenderMessages(friendId) {
+  try {
+    const msgs = await API.getMessages(friendId);
+    messageCache[friendId] = msgs;
+    await renderMessages(msgs, friendId);
+  } catch (e) {
+    console.error('Load messages failed:', e);
+  }
+}
+
+async function renderMessages(msgs, friendId) {
+  const container = document.getElementById('messages-container');
+  const isAtBottom = container.scrollHeight - container.scrollTop < container.clientHeight + 80;
+
+  if (!myPrivateKey) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">🔑</div><p>Private key not found on this device — cannot decrypt messages.<br/>Messages can only be read on the device where you registered.</p></div>`;
+    return;
+  }
+
+  const fragments = [];
+
+  for (const msg of msgs) {
+    const isMine = msg.senderId === myProfile.id;
+    let text = '···';
+    let decrypted = false;
+
+    try {
+      // Derive shared key using ECDH
+      let theirPubKey;
+      if (isMine) {
+        // I sent it — use recipient's pub key
+        theirPubKey = activeFriendPubKey || await (async () => {
+          const f = friends.find(f => f.id === friendId);
+          return f ? CryptoEngine.importPublicKey(f.publicKey) : null;
+        })();
+      } else {
+        // They sent it — use their pub key from senderPublicKey field
+        if (msg.senderPublicKey) {
+          theirPubKey = await CryptoEngine.importPublicKey(msg.senderPublicKey);
+        } else {
+          const f = friends.find(f => f.id === msg.senderId);
+          if (f) theirPubKey = await CryptoEngine.importPublicKey(f.publicKey);
+        }
+      }
+
+      if (theirPubKey) {
+        const sharedKey = await CryptoEngine.deriveSharedKey(myPrivateKey, theirPubKey);
+        text = await CryptoEngine.decrypt(msg.encryptedPayload, msg.iv, msg.tag, sharedKey);
+        decrypted = true;
+      }
+    } catch (e) {
+      text = '[Decryption failed]';
+    }
+
+    const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    fragments.push({ isMine, text, time, decrypted, id: msg.id });
+  }
+
+  container.innerHTML = '';
+  fragments.forEach(({ isMine, text, time, decrypted, id }) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = `message-wrapper ${isMine ? 'mine' : 'theirs'}`;
+    wrapper.dataset.msgId = id;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'message-bubble decrypting';
+    bubble.textContent = text;
+
+    const meta = document.createElement('div');
+    meta.className = 'message-time';
+    meta.innerHTML = `${time} ${decrypted ? '<span class="encrypted-indicator">🔒</span>' : ''}`;
+
+    wrapper.appendChild(bubble);
+    wrapper.appendChild(meta);
+    container.appendChild(wrapper);
+  });
+
+  if (isAtBottom || fragments.length === 0) {
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+async function sendMessage() {
+  const input = document.getElementById('message-input');
+  const text = input.value.trim();
+  if (!text || !activeFriendId || !activeFriendPubKey || !myPrivateKey) return;
+
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true;
+  input.value = '';
+  autoGrow(input);
+
+  try {
+    // Encrypt with ECDH shared secret
+    const sharedKey = await CryptoEngine.deriveSharedKey(myPrivateKey, activeFriendPubKey);
+    const { encryptedPayload, iv, tag } = await CryptoEngine.encrypt(text, sharedKey);
+
+    const myPubKeyB64 = myProfile.publicKey;
+
+    await API.sendMessage(activeFriendId, encryptedPayload, iv, tag, myPubKeyB64);
+    await loadAndRenderMessages(activeFriendId);
+  } catch (e) {
+    Toast.error('Failed to send: ' + e.message);
+    input.value = text;
+  } finally {
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+async function pollActiveConvo() {
+  if (!activeFriendId) return;
+  const prev = messageCache[activeFriendId]?.length || 0;
+  const msgs = await API.getMessages(activeFriendId).catch(() => null);
+  if (msgs && msgs.length > prev) {
+    messageCache[activeFriendId] = msgs;
+    await renderMessages(msgs, activeFriendId);
+  }
+}
+
+// ── Add Friend ─────────────────────────────────────────────────────────────
+function openAddFriend() {
+  document.getElementById('add-friend-modal').classList.add('visible');
+  setTimeout(() => document.getElementById('friend-code-input').focus(), 100);
+}
+
+function closeAddFriend() {
+  document.getElementById('add-friend-modal').classList.remove('visible');
+  document.getElementById('friend-code-input').value = '';
+}
+
+async function doAddFriend() {
+  const code = document.getElementById('friend-code-input').value.trim();
+  if (!code) return Toast.error('Enter a friend code');
+
+  try {
+    const friend = await API.addFriend(code);
+    friends.push(friend);
+    renderSidebar();
+    closeAddFriend();
+    Toast.success(`${friend.username} added!`);
+  } catch (e) {
+    Toast.error(e.message);
+  }
+}
+
+// ── Key Info ───────────────────────────────────────────────────────────────
+function showKeyInfo() {
+  const myFp = CryptoEngine.generateFingerprint(myProfile.publicKey);
+  document.getElementById('my-key-fp').textContent = myFp;
+
+  const activeFriend = friends.find(f => f.id === activeFriendId);
+  if (activeFriend) {
+    const theirFp = CryptoEngine.generateFingerprint(activeFriend.publicKey);
+    document.getElementById('their-key-fp').textContent = theirFp;
+  }
+
+  document.getElementById('key-info-modal').classList.add('visible');
+}
+
+function closeKeyInfo() {
+  document.getElementById('key-info-modal').classList.remove('visible');
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+function copyMyCode() {
+  navigator.clipboard.writeText(myProfile.friendCode).then(() => Toast.success('Friend code copied!'));
+}
+
+function handleInputKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('visible'); });
+});
+
+// ── Start ──────────────────────────────────────────────────────────────────
+
+// ── Password recovery modal ────────────────────────────────────────────────
+let _resolvePassword = null;
+let _rejectPassword  = null;
+
+function promptPasswordModal() {
+  return new Promise((resolve, reject) => {
+    _resolvePassword = resolve;
+    _rejectPassword  = reject;
+    document.getElementById('key-recover-modal').classList.add('visible');
+    setTimeout(() => document.getElementById('key-recover-password').focus(), 150);
+    // Allow Enter key
+    document.getElementById('key-recover-password').onkeydown = (e) => {
+      if (e.key === 'Enter') resolvePasswordModal();
+    };
+  });
+}
+
+function resolvePasswordModal() {
+  const pw = document.getElementById('key-recover-password').value;
+  document.getElementById('key-recover-modal').classList.remove('visible');
+  document.getElementById('key-recover-password').value = '';
+  if (_resolvePassword) { _resolvePassword(pw); _resolvePassword = null; }
+}
+
+function cancelPasswordModal() {
+  document.getElementById('key-recover-modal').classList.remove('visible');
+  document.getElementById('key-recover-password').value = '';
+  if (_resolvePassword) { _resolvePassword(null); _resolvePassword = null; }
+}
+
+boot();
+</script>
+
+<!-- Key Recovery Modal -->
+<div class="modal-overlay" id="key-recover-modal">
+  <div class="modal glass" style="max-width:380px">
+    <h2>🔑 Restore Your Keys</h2>
+    <p>Your encryption keys need to be restored on this browser. Enter your password to decrypt them from the server backup.</p>
+    <div class="input-group" style="margin-top:16px">
+      <label>Password</label>
+      <input id="key-recover-password" type="password" placeholder="Your account password" autocomplete="current-password" />
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn btn-primary" id="key-recover-btn" onclick="resolvePasswordModal()">Restore Keys</button>
+      <button class="btn btn-ghost" onclick="cancelPasswordModal()">Skip</button>
+    </div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-top:12px;line-height:1.6">
+      Your password never leaves this device — it's used only to decrypt the key locally.
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
