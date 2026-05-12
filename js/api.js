@@ -3,7 +3,7 @@
  */
 
 const API = (() => {
-  const BASE = window.CRYPTALK_API || 'http://localhost:3001';
+  const BASE = window.CRYPTALK_API || 'https://quench-preteen-catalyze.ngrok-free.dev';
   let _token = null;
 
   function setToken(t) {
