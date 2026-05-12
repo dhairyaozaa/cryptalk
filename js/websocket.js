@@ -21,7 +21,7 @@ const WSClient = (() => {
     const token = API.getToken();
     if (!token) return;
 
-    const wsUrl = (window.CRYPTALK_API || 'http://localhost:3001')
+    const wsUrl = (window.CRYPTALK_API || 'https://quench-preteen-catalyze.ngrok-free.dev')
       .replace('http', 'ws')
       .replace('https', 'wss');
 
