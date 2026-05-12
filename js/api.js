@@ -62,7 +62,7 @@ const API = (() => {
   function logout() {
     setToken(null);
     CryptoEngine.clearKeys();
-    window.location.href = '/index.html';
+    window.location.href = 'index.html';
   }
 
   return { register, login, getMe, addFriend, getFriends, getUserPublicKey, sendMessage, getMessages, logout, getToken, setToken };
